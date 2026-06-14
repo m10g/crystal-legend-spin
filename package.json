@@ -1,0 +1,20 @@
+{
+  "name": "crystal-spin-legends",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Crystal Spin Legends - V0.1 Baby Dragon Home Demo",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.168.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.168.0",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
+  }
+}
