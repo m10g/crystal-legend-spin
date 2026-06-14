@@ -6,8 +6,9 @@ import { Spark } from "./spark";
 import { MysteryEgg } from "./egg";
 import { MagicCrystal } from "./magicCrystal";
 import { UI, type ActionName } from "./ui";
+import { BattleMode, type BattleKey } from "./battleMode";
 
-// --- Renderer ---
+// ─── Renderer (shared between modes) ─────────────────────────────────────────
 const root = document.getElementById("scene-root")!;
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -16,63 +17,42 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 root.appendChild(renderer.domElement);
 
-// --- Scene contents ---
-const { scene, camera, crystals } = createGarden(window.innerWidth / window.innerHeight);
+// ─── Home mode objects ────────────────────────────────────────────────────────
+const { scene: homeScene, camera: homeCamera, crystals } = createGarden(
+  window.innerWidth / window.innerHeight,
+);
 
 const spark = new Spark();
-scene.add(spark.group);
+homeScene.add(spark.group);
 
 const egg = new MysteryEgg();
-scene.add(egg.group);
+homeScene.add(egg.group);
 
 const magicCrystal = new MagicCrystal();
-scene.add(magicCrystal.group);
+homeScene.add(magicCrystal.group);
 
-// --- Game state + UI ---
 const state = new GameState();
 
-// What each button does: how the meters change, what Spark does, what she says.
 const ACTIONS: Record<
   ActionName,
   { changes: Partial<Record<keyof GameState["meters"], number>>; react: () => void; line: string }
 > = {
-  feed: {
-    changes: { happiness: 12, energy: 8, growth: 4 },
-    react: () => spark.hop(),
-    line: "Yum! 🍓",
-  },
-  play: {
-    changes: { bond: 12, growth: 8, happiness: 6, energy: -6 },
-    react: () => spark.spin(),
-    line: "Wheee! ⭐",
-  },
-  care: {
-    changes: { energy: 10, happiness: 8, bond: 6 },
-    react: () => spark.sparkle(),
-    line: "So cozy! 💖",
-  },
-  sleep: {
-    changes: { energy: 22, happiness: 4 },
-    react: () => spark.sleep(),
-    line: "Zzz... 😴",
-  },
+  feed:  { changes: { happiness: 12, energy: 8, growth: 4 },        react: () => spark.hop(),     line: "Yum! 🍓" },
+  play:  { changes: { bond: 12, growth: 8, happiness: 6, energy: -6 }, react: () => spark.spin(),   line: "Wheee! ⭐" },
+  care:  { changes: { energy: 10, happiness: 8, bond: 6 },           react: () => spark.sparkle(), line: "So cozy! 💖" },
+  sleep: { changes: { energy: 22, happiness: 4 },                    react: () => spark.sleep(),   line: "Zzz... 😴" },
 };
 
 const ui = new UI(state, handleAction);
 
 function handleAction(action: ActionName): void {
-  const def = ACTIONS[action];
-
-  // Waking up if any non-sleep action is taken.
   if (action !== "sleep") spark.wake();
-
-  for (const [meter, amount] of Object.entries(def.changes)) {
+  for (const [meter, amount] of Object.entries(ACTIONS[action].changes)) {
     state.change(meter as keyof GameState["meters"], amount as number);
   }
-  def.react();
-  ui.say(def.line);
+  ACTIONS[action].react();
+  ui.say(ACTIONS[action].line);
   ui.syncMeters();
-
   if (state.checkUnlock()) {
     magicCrystal.reveal();
     spark.sparkle();
@@ -80,36 +60,113 @@ function handleAction(action: ActionName): void {
   }
 }
 
-// --- Render loop ---
+// ─── Battle mode (lazy init) ──────────────────────────────────────────────────
+let battleMode: BattleMode | null = null;
+let currentMode: "home" | "battle" = "home";
+
+const homeOverlay   = document.getElementById("ui-overlay")!;
+const battleOverlay = document.getElementById("battle-ui")!;
+const countdownEl   = document.getElementById("battle-countdown")!;
+const playerFill    = document.getElementById("player-energy-fill")!;
+const enemyFill     = document.getElementById("enemy-energy-fill")!;
+const battleResult  = document.getElementById("battle-result")!;
+const resultTitle   = document.getElementById("battle-result-title")!;
+
+function enterBattle(): void {
+  if (!battleMode) {
+    battleMode = new BattleMode(window.innerWidth / window.innerHeight);
+
+    battleMode.onCountdownTick = (n) => {
+      if (n > 0)       countdownEl.textContent = String(n);
+      else if (n === 0) countdownEl.textContent = "FIGHT!";
+      else              countdownEl.textContent = "";
+    };
+
+    battleMode.onEnergyChange = (pe, ee) => {
+      playerFill.style.width = `${pe}%`;
+      enemyFill.style.width  = `${ee}%`;
+    };
+
+    battleMode.onGameOver = (winner) => {
+      if (winner === "player") {
+        resultTitle.textContent = "🏆 You Win! Spark is amazing!";
+      } else {
+        resultTitle.textContent = "💀 Mega Shark wins... Try again!";
+      }
+      battleResult.classList.remove("hidden");
+    };
+
+    // Wire mobile D-pad buttons.
+    const keyMap: Record<string, BattleKey> = {
+      "btn-up":    "up",
+      "btn-down":  "down",
+      "btn-left":  "left",
+      "btn-right": "right",
+      "btn-dash":  "dash",
+    };
+    for (const [id, key] of Object.entries(keyMap)) {
+      const btn = document.getElementById(id)!;
+      btn.addEventListener("touchstart", (e) => { e.preventDefault(); battleMode!.setKey(key, true); },  { passive: false });
+      btn.addEventListener("touchend",   (e) => { e.preventDefault(); battleMode!.setKey(key, false); }, { passive: false });
+      btn.addEventListener("mousedown",  ()  => battleMode!.setKey(key, true));
+      btn.addEventListener("mouseup",    ()  => battleMode!.setKey(key, false));
+    }
+  }
+
+  currentMode = "battle";
+  homeOverlay.classList.add("hidden");
+  battleOverlay.classList.remove("hidden");
+  battleResult.classList.add("hidden");
+  countdownEl.textContent = "";
+  battleMode.start();
+}
+
+function exitBattle(): void {
+  currentMode = "home";
+  battleOverlay.classList.add("hidden");
+  homeOverlay.classList.remove("hidden");
+}
+
+document.getElementById("enter-battle")!.addEventListener("click", enterBattle);
+document.getElementById("battle-exit-btn")!.addEventListener("click", exitBattle);
+document.getElementById("btn-back-home")!.addEventListener("click", exitBattle);
+document.getElementById("btn-fight-again")!.addEventListener("click", () => {
+  battleResult.classList.add("hidden");
+  battleMode!.start();
+});
+
+// ─── Render loop ──────────────────────────────────────────────────────────────
 const clock = new THREE.Clock();
 
 function animate(): void {
   requestAnimationFrame(animate);
-  const t = clock.getElapsedTime();
-  const dt = Math.min(clock.getDelta(), 0.05);
+  const t   = clock.getElapsedTime();
+  const dt  = Math.min(clock.getDelta(), 0.05);
 
-  spark.update(t, dt);
-  egg.update(t);
-  magicCrystal.update(t, dt);
-
-  // Pulse the garden crystals.
-  for (const c of crystals) {
-    const mat = c.material as THREE.MeshStandardMaterial;
-    const phase = c.userData.phase as number;
-    mat.emissiveIntensity = (c.userData.baseIntensity as number) + Math.sin(t * 2 + phase) * 0.3;
+  if (currentMode === "home") {
+    spark.update(t, dt);
+    egg.update(t);
+    magicCrystal.update(t, dt);
+    for (const c of crystals) {
+      (c.material as THREE.MeshStandardMaterial).emissiveIntensity =
+        (c.userData.baseIntensity as number) + Math.sin(t * 2 + (c.userData.phase as number)) * 0.3;
+    }
+    homeCamera.position.x = Math.sin(t * 0.15) * 0.6;
+    homeCamera.lookAt(0, 0.6, 0);
+    renderer.render(homeScene, homeCamera);
+  } else if (battleMode) {
+    battleMode.update(dt);
+    renderer.render(battleMode.arenaScene.scene, battleMode.arenaScene.camera);
   }
-
-  // Slow, gentle camera drift for a lively feel.
-  camera.position.x = Math.sin(t * 0.15) * 0.6;
-  camera.lookAt(0, 0.6, 0);
-
-  renderer.render(scene, camera);
 }
 animate();
 
-// --- Resize handling ---
+// ─── Resize ───────────────────────────────────────────────────────────────────
 window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  renderer.setSize(w, h);
+  homeCamera.aspect = w / h;
+  homeCamera.updateProjectionMatrix();
+  if (battleMode) battleMode.resize(w / h);
 });

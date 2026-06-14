@@ -9,7 +9,7 @@
     <!-- The Three.js canvas is mounted into this container. -->
     <div id="scene-root"></div>
 
-    <!-- HUD overlay: meters on top, action buttons on the bottom. -->
+    <!-- ═══════════════════════════════════════════════════════ HOME UI ══ -->
     <div id="ui-overlay">
       <header id="title-bar">
         <h1>Crystal Spin Legends</h1>
@@ -42,16 +42,62 @@
         <button class="action-btn" data-action="play">⭐ Play</button>
         <button class="action-btn" data-action="care">💖 Care</button>
         <button class="action-btn" data-action="sleep">😴 Sleep</button>
+        <button class="action-btn battle-btn" id="enter-battle">⚔️ Battle!</button>
       </nav>
     </div>
 
-    <!-- Full-screen banner shown when the transformation unlocks. -->
+    <!-- Unlock banner -->
     <div id="unlock-banner" class="hidden">
       <div id="unlock-card">
         <h2>✨ Crystal Transformation Unlocked! ✨</h2>
         <p>Spark is ready to enter the Magic Spin Crystal.</p>
         <button id="unlock-dismiss">Yay!</button>
       </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ BATTLE UI ══ -->
+    <div id="battle-ui" class="hidden">
+
+      <!-- Energy bars across the top -->
+      <div id="battle-header">
+        <div class="b-energy-block player-block">
+          <span class="b-name">⚡ Spark</span>
+          <div class="b-track"><div id="player-energy-fill" class="b-fill player-fill"></div></div>
+        </div>
+
+        <div id="battle-countdown"></div>
+
+        <div class="b-energy-block enemy-block">
+          <span class="b-name">🦈 Mega Shark</span>
+          <div class="b-track"><div id="enemy-energy-fill" class="b-fill enemy-fill"></div></div>
+        </div>
+      </div>
+
+      <!-- Controls hint (desktop) -->
+      <div id="battle-hint">WASD / Arrows · Space = DASH</div>
+
+      <!-- Result overlay (hidden until someone wins) -->
+      <div id="battle-result" class="hidden">
+        <div id="battle-result-card">
+          <h2 id="battle-result-title"></h2>
+          <button id="btn-fight-again">⚔️ Fight Again!</button>
+          <button id="btn-back-home">🏠 Back to Home</button>
+        </div>
+      </div>
+
+      <!-- Mobile D-pad + dash button -->
+      <div id="battle-controls">
+        <div id="dpad">
+          <button class="dpad-btn" id="btn-up">▲</button>
+          <button class="dpad-btn" id="btn-left">◀</button>
+          <div class="dpad-center"></div>
+          <button class="dpad-btn" id="btn-right">▶</button>
+          <button class="dpad-btn" id="btn-down">▼</button>
+        </div>
+        <button id="btn-dash">💥<br>DASH</button>
+      </div>
+
+      <button id="battle-exit-btn">← Home</button>
     </div>
 
     <script type="module" src="/src/main.ts"></script>
