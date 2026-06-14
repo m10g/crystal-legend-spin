@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crystal Spin Legends</title>
+  </head>
+  <body>
+    <!-- The Three.js canvas is mounted into this container. -->
+    <div id="scene-root"></div>
+
+    <!-- HUD overlay: meters on top, action buttons on the bottom. -->
+    <div id="ui-overlay">
+      <header id="title-bar">
+        <h1>Crystal Spin Legends</h1>
+        <p id="subtitle">Baby Dragon Home Demo</p>
+      </header>
+
+      <section id="meters">
+        <div class="meter">
+          <span class="meter-label">Happiness</span>
+          <div class="meter-track"><div class="meter-fill" id="fill-happiness"></div></div>
+        </div>
+        <div class="meter">
+          <span class="meter-label">Energy</span>
+          <div class="meter-track"><div class="meter-fill" id="fill-energy"></div></div>
+        </div>
+        <div class="meter">
+          <span class="meter-label">Bond</span>
+          <div class="meter-track"><div class="meter-fill" id="fill-bond"></div></div>
+        </div>
+        <div class="meter">
+          <span class="meter-label">Growth</span>
+          <div class="meter-track"><div class="meter-fill" id="fill-growth"></div></div>
+        </div>
+      </section>
+
+      <div id="speech-bubble" class="hidden"></div>
+
+      <nav id="actions">
+        <button class="action-btn" data-action="feed">🍓 Feed</button>
+        <button class="action-btn" data-action="play">⭐ Play</button>
+        <button class="action-btn" data-action="care">💖 Care</button>
+        <button class="action-btn" data-action="sleep">😴 Sleep</button>
+      </nav>
+    </div>
+
+    <!-- Full-screen banner shown when the transformation unlocks. -->
+    <div id="unlock-banner" class="hidden">
+      <div id="unlock-card">
+        <h2>✨ Crystal Transformation Unlocked! ✨</h2>
+        <p>Spark is ready to enter the Magic Spin Crystal.</p>
+        <button id="unlock-dismiss">Yay!</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

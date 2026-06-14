@@ -1,0 +1,246 @@
+:root {
+  --magic-pink: #ff7ad9;
+  --magic-blue: #5fd0ff;
+  --magic-purple: #a06bff;
+  --panel-bg: rgba(28, 18, 64, 0.55);
+  --panel-border: rgba(180, 150, 255, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  background: #0a0420;
+  color: #fff;
+  user-select: none;
+}
+
+#scene-root,
+#scene-root canvas {
+  position: fixed;
+  inset: 0;
+  display: block;
+}
+
+/* The overlay sits above the canvas but lets clicks through except on
+   interactive children (buttons). */
+#ui-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  padding: 18px;
+}
+
+#title-bar {
+  text-align: center;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+#title-bar h1 {
+  margin: 0;
+  font-size: clamp(22px, 4vw, 38px);
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, var(--magic-blue), var(--magic-pink));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+#subtitle {
+  margin: 2px 0 0;
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* Meters */
+#meters {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  backdrop-filter: blur(6px);
+  width: 200px;
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.meter-label {
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.meter-track {
+  height: 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 8px;
+  transition: width 0.45s ease;
+}
+
+#fill-happiness {
+  background: linear-gradient(90deg, #ffd36b, #ff7ad9);
+}
+#fill-energy {
+  background: linear-gradient(90deg, #6bffb0, #5fd0ff);
+}
+#fill-bond {
+  background: linear-gradient(90deg, #ff9bd2, #a06bff);
+}
+#fill-growth {
+  background: linear-gradient(90deg, #a6ff6b, #5fd0ff);
+}
+
+/* Action buttons */
+#actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  pointer-events: auto;
+  margin-bottom: 6px;
+}
+
+.action-btn {
+  pointer-events: auto;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: bold;
+  color: #fff;
+  padding: 14px 22px;
+  border: 2px solid var(--panel-border);
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(160, 107, 255, 0.85), rgba(95, 208, 255, 0.7));
+  box-shadow: 0 6px 18px rgba(95, 80, 200, 0.4);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px) scale(1.04);
+  filter: brightness(1.12);
+}
+
+.action-btn:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Speech bubble that floats above Spark */
+#speech-bubble {
+  position: absolute;
+  top: 22%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #3a1d6e;
+  font-weight: bold;
+  font-size: 16px;
+  padding: 8px 16px;
+  border-radius: 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: none;
+}
+
+#speech-bubble.hidden {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* Unlock banner */
+#unlock-banner {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 4, 32, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 20;
+  transition: opacity 0.5s ease;
+}
+
+#unlock-banner.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#unlock-card {
+  text-align: center;
+  padding: 32px 40px;
+  border-radius: 24px;
+  background: linear-gradient(160deg, rgba(160, 107, 255, 0.95), rgba(95, 208, 255, 0.9));
+  border: 2px solid #fff;
+  box-shadow: 0 0 60px rgba(255, 122, 217, 0.7);
+  animation: pop-in 0.5s ease;
+}
+
+#unlock-card h2 {
+  margin: 0 0 10px;
+  font-size: 26px;
+}
+
+#unlock-card p {
+  margin: 0 0 18px;
+  font-size: 16px;
+}
+
+#unlock-dismiss {
+  pointer-events: auto;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: bold;
+  color: #5a1d8e;
+  background: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 12px 30px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.hidden {
+  display: none;
+}
