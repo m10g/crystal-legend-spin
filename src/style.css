@@ -245,6 +245,14 @@ body {
   display: none;
 }
 
+/* The full-screen overlays set `display` via an ID selector, which would
+   otherwise out-rank the generic `.hidden` rule above. Match their specificity
+   so toggling `.hidden` actually hides them. */
+#ui-overlay.hidden,
+#battle-ui.hidden {
+  display: none;
+}
+
 /* ═══════════════════════════════════════════════════════════ BATTLE UI ══ */
 
 /* Battle mode button in home nav — stands out from the other buttons. */

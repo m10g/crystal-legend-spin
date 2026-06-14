@@ -3,9 +3,21 @@ import * as THREE from "three";
 // Spark particles for collision impacts and effects.
 export class SparkParticles {
   private particles: { mesh: THREE.Mesh; vel: THREE.Vector3; life: number }[] = [];
+  // Materials are cached per colour and reused, so repeated collisions don't
+  // leak a fresh material every time.
+  private materials = new Map<number, THREE.MeshStandardMaterial>();
+
+  private getMaterial(color: number): THREE.MeshStandardMaterial {
+    let mat = this.materials.get(color);
+    if (!mat) {
+      mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 3 });
+      this.materials.set(color, mat);
+    }
+    return mat;
+  }
 
   emit(scene: THREE.Scene, position: THREE.Vector3, count: number, color = 0xffdd44): void {
-    const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 3 });
+    const mat = this.getMaterial(color);
     for (let i = 0; i < count; i++) {
       const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.07, 4, 4), mat);
       mesh.position.copy(position);
@@ -127,7 +139,7 @@ export class PlayerSpinner {
   }
 
   applyInput(dx: number, dz: number, dt: number): void {
-    const ACCEL = 28;
+    const ACCEL = 40;
     this.velocity.x += dx * ACCEL * dt;
     this.velocity.y += dz * ACCEL * dt;
   }
@@ -150,12 +162,13 @@ export class PlayerSpinner {
     }
     if (this.dashCooldown > 0) this.dashCooldown -= dt;
 
-    // Friction (dt-normalised to 60 fps).
-    const friction = this.isDashing ? 0.98 : 0.84;
+    // Friction (dt-normalised to 60 fps). Gentle enough that the spinner
+    // glides and actually approaches its MAX speed instead of being throttled.
+    const friction = this.isDashing ? 0.99 : 0.91;
     this.velocity.multiplyScalar(Math.pow(friction, dt * 60));
 
     // Speed cap.
-    const MAX = this.isDashing ? 20 : 10;
+    const MAX = this.isDashing ? 20 : 11;
     const spd = this.velocity.length();
     if (spd > MAX) this.velocity.multiplyScalar(MAX / spd);
 
@@ -302,12 +315,12 @@ export class EnemySpinner {
 
     switch (this.state) {
       case "approach":
-        this.velocity.x += nx * 5 * dt;
-        this.velocity.y += nz * 5 * dt;
+        this.velocity.x += nx * 30 * dt;
+        this.velocity.y += nz * 30 * dt;
         if (dist < 4 && this.stateTimer <= 0) {
           this.state = "charge";
           this.stateTimer = 0.65;
-          this.velocity.set(nx * 11, nz * 11);
+          this.velocity.set(nx * 14, nz * 14);
         }
         break;
 
@@ -326,12 +339,12 @@ export class EnemySpinner {
         break;
     }
 
-    // Speed cap.
-    const MAX = this.state === "charge" ? 13 : 6;
+    // Speed cap. Slightly slower than the player so Spark can out-manoeuvre it.
+    const MAX = this.state === "charge" ? 14 : 7;
     const spd = this.velocity.length();
     if (spd > MAX) this.velocity.multiplyScalar(MAX / spd);
 
-    const friction = this.state === "charge" ? 0.97 : 0.84;
+    const friction = this.state === "charge" ? 0.98 : 0.91;
     this.velocity.multiplyScalar(Math.pow(friction, dt * 60));
 
     this.group.position.x += this.velocity.x * dt;

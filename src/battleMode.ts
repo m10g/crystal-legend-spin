@@ -14,7 +14,9 @@ export class BattleMode {
 
   private particles: SparkParticles;
   private battleState: BattleState = "countdown";
-  private countdownTimer = 3.5;
+  private countdownTimer = 3;
+  private fightFlashTimer = 0; // keeps "FIGHT!" on screen briefly
+  private hitCooldown = 0;     // min time between scoring hits (prevents 1-frame combos)
   private shakeAmount = 0;
   private baseCamera: THREE.Vector3;
   private keys: Record<BattleKey, boolean> = {
@@ -66,7 +68,9 @@ export class BattleMode {
 
   start(): void {
     this.battleState = "countdown";
-    this.countdownTimer = 3.5;
+    this.countdownTimer = 3;
+    this.fightFlashTimer = 0;
+    this.hitCooldown = 0;
     this.player.reset();
     this.enemy.reset();
     this.shakeAmount = 0;
@@ -78,16 +82,23 @@ export class BattleMode {
     // ── Countdown ──────────────────────────────────────────────────────────
     if (this.battleState === "countdown") {
       this.countdownTimer -= dt;
-      const displayCount = Math.ceil(this.countdownTimer);
-      this.onCountdownTick?.(displayCount > 0 ? displayCount : 0);
-      if (this.countdownTimer <= 0) {
+      if (this.countdownTimer > 0) {
+        this.onCountdownTick?.(Math.ceil(this.countdownTimer)); // 3, 2, 1
+      } else {
         this.battleState = "fighting";
-        this.onCountdownTick?.(-1); // -1 signals "FIGHT!"
+        this.fightFlashTimer = 0.8;
+        this.onCountdownTick?.(0); // 0 => show "FIGHT!"
       }
       return;
     }
 
     if (this.battleState !== "fighting") return;
+
+    // Clear the "FIGHT!" flash a short moment after the battle starts.
+    if (this.fightFlashTimer > 0) {
+      this.fightFlashTimer -= dt;
+      if (this.fightFlashTimer <= 0) this.onCountdownTick?.(-1); // -1 => clear
+    }
 
     // ── Player input ────────────────────────────────────────────────────────
     let dx = 0;
@@ -103,10 +114,12 @@ export class BattleMode {
 
     this.player.applyInput(dx, dz, dt);
 
-    // Dash: fire on rising edge of dash key.
+    // Dash: fire on rising edge of dash key. Dash in the held direction; only
+    // default to "forward" (-Z) when no direction is held at all.
     const dashNow = this.keys.dash;
     if (dashNow && !this.prevDash) {
-      this.player.triggerDash(dx || 0, dz || -1);
+      const noInput = dx === 0 && dz === 0;
+      this.player.triggerDash(dx, noInput ? -1 : dz);
     }
     this.prevDash = dashNow;
 
@@ -115,6 +128,8 @@ export class BattleMode {
     this.player.update(dt, arenaRadius);
     this.enemy.update(dt, this.player.group.position, arenaRadius);
     this.particles.update(this.arenaScene.scene, dt);
+
+    if (this.hitCooldown > 0) this.hitCooldown -= dt;
 
     // ── Collision detection ─────────────────────────────────────────────────
     const pdx = this.player.group.position.x - this.enemy.group.position.x;
@@ -138,12 +153,17 @@ export class BattleMode {
       const relVz = this.player.velocity.y - this.enemy.velocity.y;
       const impactSpeed = Math.abs(relVx * nx + relVz * nz);
 
-      if (impactSpeed > 0.8) {
+      if (impactSpeed > 0.8 && this.hitCooldown <= 0) {
+        this.hitCooldown = 0.45; // each ram scores once, then a short cooldown
         const impulse = impactSpeed * 0.9;
 
-        // Bounce player back.
+        // Bounce player back, then clamp so a hit can't fling them across the
+        // arena in a single frame.
         this.player.velocity.x -= nx * impulse * 1.4;
         this.player.velocity.y -= nz * impulse * 1.4;
+        const pvLen = Math.hypot(this.player.velocity.x, this.player.velocity.y);
+        const PV_MAX = 22;
+        if (pvLen > PV_MAX) this.player.velocity.multiplyScalar(PV_MAX / pvLen);
 
         // Send enemy flying (they take more impact).
         this.enemy.recoilFrom(nx * impulse * 2.2, nz * impulse * 2.2);
@@ -182,12 +202,13 @@ export class BattleMode {
     }
 
     // ── Win / lose ───────────────────────────────────────────────────────────
-    if (this.player.energy <= 0) {
+    if (this.player.energy <= 0 || this.enemy.energy <= 0) {
       this.battleState = "gameover";
-      this.onGameOver?.("enemy");
-    } else if (this.enemy.energy <= 0) {
-      this.battleState = "gameover";
-      this.onGameOver?.("player");
+      // Settle the camera so the result card isn't shown mid-shake.
+      this.shakeAmount = 0;
+      this.arenaScene.camera.position.copy(this.baseCamera);
+      // Ties go to the hero — Spark wins.
+      this.onGameOver?.(this.enemy.energy <= 0 ? "player" : "enemy");
     }
   }
 

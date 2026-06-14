@@ -137,11 +137,15 @@ document.getElementById("btn-fight-again")!.addEventListener("click", () => {
 
 // ─── Render loop ──────────────────────────────────────────────────────────────
 const clock = new THREE.Clock();
+let elapsed = 0; // accumulated time; see note below
 
 function animate(): void {
   requestAnimationFrame(animate);
-  const t   = clock.getElapsedTime();
-  const dt  = Math.min(clock.getDelta(), 0.05);
+  // NOTE: only call getDelta() here. THREE.Clock.getElapsedTime() also advances
+  // the clock internally, so calling both would make getDelta() return ~0.
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed += dt;
+  const t = elapsed;
 
   if (currentMode === "home") {
     spark.update(t, dt);

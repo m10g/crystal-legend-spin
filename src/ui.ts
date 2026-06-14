@@ -24,8 +24,9 @@ export class UI {
     this.bubble = this.el("speech-bubble");
     this.banner = this.el("unlock-banner");
 
-    // Wire action buttons.
-    document.querySelectorAll<HTMLButtonElement>(".action-btn").forEach((btn) => {
+    // Wire creature-action buttons. Only buttons carrying a data-action are
+    // creature actions — others (e.g. the Battle button) are handled elsewhere.
+    document.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((btn) => {
       btn.addEventListener("click", () => {
         onAction(btn.dataset.action as ActionName);
       });
