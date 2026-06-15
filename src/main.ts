@@ -106,10 +106,16 @@ function enterBattle(): void {
     };
     for (const [id, key] of Object.entries(keyMap)) {
       const btn = document.getElementById(id)!;
-      btn.addEventListener("touchstart", (e) => { e.preventDefault(); battleMode!.setKey(key, true); },  { passive: false });
-      btn.addEventListener("touchend",   (e) => { e.preventDefault(); battleMode!.setKey(key, false); }, { passive: false });
-      btn.addEventListener("mousedown",  ()  => battleMode!.setKey(key, true));
-      btn.addEventListener("mouseup",    ()  => battleMode!.setKey(key, false));
+      const press   = (e: Event) => { e.preventDefault(); battleMode!.setKey(key, true); };
+      const release = (e: Event) => { e.preventDefault(); battleMode!.setKey(key, false); };
+      btn.addEventListener("touchstart", press, { passive: false });
+      // Clear on end AND cancel so an interrupted touch can't stick the key on.
+      btn.addEventListener("touchend", release, { passive: false });
+      btn.addEventListener("touchcancel", release, { passive: false });
+      btn.addEventListener("mousedown", press);
+      btn.addEventListener("mouseup", release);
+      // If the pointer slides off the button, treat it as a release too.
+      btn.addEventListener("mouseleave", () => battleMode!.setKey(key, false));
     }
   }
 

@@ -59,6 +59,13 @@ export class BattleMode {
         case "Space": case "ShiftLeft": this.keys.dash  = false; break;
       }
     });
+    // If focus is lost mid-press, keyup never arrives — clear everything so the
+    // spinner doesn't keep drifting when the player comes back.
+    window.addEventListener("blur", () => this.clearKeys());
+  }
+
+  private clearKeys(): void {
+    this.keys.up = this.keys.down = this.keys.left = this.keys.right = this.keys.dash = false;
   }
 
   /** Called by the HTML mobile buttons on touchstart/touchend. */
@@ -74,6 +81,9 @@ export class BattleMode {
     this.player.reset();
     this.enemy.reset();
     this.shakeAmount = 0;
+    this.particles.clear(this.arenaScene.scene);
+    this.clearKeys();
+    this.prevDash = false;
     this.arenaScene.camera.position.copy(this.baseCamera);
     this.onEnergyChange?.(100, 100);
   }

@@ -16,6 +16,15 @@ export class SparkParticles {
     return mat;
   }
 
+  /** Remove any live particles — used when a new battle starts. */
+  clear(scene: THREE.Scene): void {
+    for (const p of this.particles) {
+      scene.remove(p.mesh);
+      p.mesh.geometry.dispose();
+    }
+    this.particles.length = 0;
+  }
+
   emit(scene: THREE.Scene, position: THREE.Vector3, count: number, color = 0xffdd44): void {
     const mat = this.getMaterial(color);
     for (let i = 0; i < count; i++) {
