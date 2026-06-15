@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crystal Spin Legends</title>
+    <script type="module" crossorigin src="/crystal-legend-spin/assets/index-BBpaQi_0.js"></script>
+    <link rel="stylesheet" crossorigin href="/crystal-legend-spin/assets/index-Dtb3q00D.css">
+  </head>
+  <body>
+    <!-- The Three.js canvas is mounted into this container. -->
+    <div id="scene-root"></div>
+
+    <!-- ═══════════════════════════════════════════════════════ HOME UI ══ -->
+    <div id="ui-overlay">
+      <header id="title-bar">
+        <h1>Crystal Spin Legends</h1>
+        <p id="subtitle">Baby Dragon Home Demo</p>
+      </header>
+
+      <section id="meters">
+        <div class="meter">
+          <span class="meter-label">Happiness</span>
+          <div class="meter-track"><div class="meter-fill" id="fill-happiness"></div></div>
+        </div>
+        <div class="meter">
+          <span class="meter-label">Energy</span>
+          <div class="meter-track"><div class="meter-fill" id="fill-energy"></div></div>
+        </div>
+        <div class="meter">
+          <span class="meter-label">Bond</span>
+          <div class="meter-track"><div class="meter-fill" id="fill-bond"></div></div>
+        </div>
+        <div class="meter">
+          <span class="meter-label">Growth</span>
+          <div class="meter-track"><div class="meter-fill" id="fill-growth"></div></div>
+        </div>
+      </section>
+
+      <div id="speech-bubble" class="hidden"></div>
+
+      <nav id="actions">
+        <button class="action-btn" data-action="feed">🍓 Feed</button>
+        <button class="action-btn" data-action="play">⭐ Play</button>
+        <button class="action-btn" data-action="care">💖 Care</button>
+        <button class="action-btn" data-action="sleep">😴 Sleep</button>
+        <button class="action-btn battle-btn" id="enter-battle">⚔️ Battle!</button>
+      </nav>
+    </div>
+
+    <!-- Unlock banner -->
+    <div id="unlock-banner" class="hidden">
+      <div id="unlock-card">
+        <h2>✨ Crystal Transformation Unlocked! ✨</h2>
+        <p>Spark is ready to enter the Magic Spin Crystal.</p>
+        <button id="unlock-dismiss">Yay!</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ BATTLE UI ══ -->
+    <div id="battle-ui" class="hidden">
+
+      <!-- Energy bars across the top -->
+      <div id="battle-header">
+        <div class="b-energy-block player-block">
+          <span class="b-name">⚡ Spark</span>
+          <div class="b-track"><div id="player-energy-fill" class="b-fill player-fill"></div></div>
+        </div>
+
+        <div id="battle-countdown"></div>
+
+        <div class="b-energy-block enemy-block">
+          <span class="b-name">🦈 Mega Shark</span>
+          <div class="b-track"><div id="enemy-energy-fill" class="b-fill enemy-fill"></div></div>
+        </div>
+      </div>
+
+      <!-- Controls hint (desktop) -->
+      <div id="battle-hint">WASD / Arrows · Space = DASH</div>
+
+      <!-- Result overlay (hidden until someone wins) -->
+      <div id="battle-result" class="hidden">
+        <div id="battle-result-card">
+          <h2 id="battle-result-title"></h2>
+          <button id="btn-fight-again">⚔️ Fight Again!</button>
+          <button id="btn-back-home">🏠 Back to Home</button>
+        </div>
+      </div>
+
+      <!-- Mobile D-pad + dash button -->
+      <div id="battle-controls">
+        <div id="dpad">
+          <button class="dpad-btn" id="btn-up">▲</button>
+          <button class="dpad-btn" id="btn-left">◀</button>
+          <div class="dpad-center"></div>
+          <button class="dpad-btn" id="btn-right">▶</button>
+          <button class="dpad-btn" id="btn-down">▼</button>
+        </div>
+        <button id="btn-dash">💥<br>DASH</button>
+      </div>
+
+      <button id="battle-exit-btn">← Home</button>
+    </div>
+
+  </body>
+</html>
