@@ -1,8 +1,7 @@
 import * as THREE from "three";
 import { createBattleArena, type ArenaScene } from "./battleArena";
-import { PlayerSpinner, EnemySpinner, SparkParticles } from "./spinners";
+import { PlayerSpinner, EnemySpinner, SparkParticles, ShockwaveRing } from "./spinners";
 
-// Possible keys for mobile button injection.
 export type BattleKey = "up" | "down" | "left" | "right" | "dash";
 
 type BattleState = "countdown" | "fighting" | "gameover";
@@ -13,21 +12,23 @@ export class BattleMode {
   readonly enemy: EnemySpinner;
 
   private particles: SparkParticles;
+  private shockwaves: ShockwaveRing[] = [];
   private battleState: BattleState = "countdown";
   private countdownTimer = 3;
-  private fightFlashTimer = 0; // keeps "FIGHT!" on screen briefly
-  private hitCooldown = 0;     // min time between scoring hits (prevents 1-frame combos)
+  private fightFlashTimer = 0;
+  private hitCooldown = 0;
   private shakeAmount = 0;
   private baseCamera: THREE.Vector3;
+  private boundaryFlash = 0;
   private keys: Record<BattleKey, boolean> = {
     up: false, down: false, left: false, right: false, dash: false,
   };
-  private prevDash = false; // edge-detect for dash
+  private prevDash = false;
 
-  // Callbacks the main game loop uses to update HTML UI.
   onCountdownTick?: (seconds: number) => void;
   onEnergyChange?: (playerEnergy: number, enemyEnergy: number) => void;
   onGameOver?: (winner: "player" | "enemy") => void;
+  onScreenFlash?: (color: string) => void;
 
   constructor(aspect: number) {
     this.arenaScene = createBattleArena(aspect);
@@ -36,6 +37,7 @@ export class BattleMode {
     this.particles = new SparkParticles();
     this.arenaScene.scene.add(this.player.group);
     this.arenaScene.scene.add(this.enemy.group);
+    this.player.addToScene(this.arenaScene.scene);
     this.baseCamera = this.arenaScene.camera.position.clone();
     this.bindKeyboard();
   }
@@ -59,8 +61,6 @@ export class BattleMode {
         case "Space": case "ShiftLeft": this.keys.dash  = false; break;
       }
     });
-    // If focus is lost mid-press, keyup never arrives — clear everything so the
-    // spinner doesn't keep drifting when the player comes back.
     window.addEventListener("blur", () => this.clearKeys());
   }
 
@@ -68,7 +68,6 @@ export class BattleMode {
     this.keys.up = this.keys.down = this.keys.left = this.keys.right = this.keys.dash = false;
   }
 
-  /** Called by the HTML mobile buttons on touchstart/touchend. */
   setKey(key: BattleKey, pressed: boolean): void {
     this.keys[key] = pressed;
   }
@@ -81,10 +80,14 @@ export class BattleMode {
     this.player.reset();
     this.enemy.reset();
     this.shakeAmount = 0;
+    this.boundaryFlash = 0;
+    for (const sw of this.shockwaves) sw.dispose(this.arenaScene.scene);
+    this.shockwaves.length = 0;
     this.particles.clear(this.arenaScene.scene);
     this.clearKeys();
     this.prevDash = false;
     this.arenaScene.camera.position.copy(this.baseCamera);
+    this.arenaScene.boundaryMat.emissiveIntensity = 2.0;
     this.onEnergyChange?.(100, 100);
   }
 
@@ -93,39 +96,34 @@ export class BattleMode {
     if (this.battleState === "countdown") {
       this.countdownTimer -= dt;
       if (this.countdownTimer > 0) {
-        this.onCountdownTick?.(Math.ceil(this.countdownTimer)); // 3, 2, 1
+        this.onCountdownTick?.(Math.ceil(this.countdownTimer));
       } else {
         this.battleState = "fighting";
         this.fightFlashTimer = 0.8;
-        this.onCountdownTick?.(0); // 0 => show "FIGHT!"
+        this.onCountdownTick?.(0);
       }
       return;
     }
 
     if (this.battleState !== "fighting") return;
 
-    // Clear the "FIGHT!" flash a short moment after the battle starts.
     if (this.fightFlashTimer > 0) {
       this.fightFlashTimer -= dt;
-      if (this.fightFlashTimer <= 0) this.onCountdownTick?.(-1); // -1 => clear
+      if (this.fightFlashTimer <= 0) this.onCountdownTick?.(-1);
     }
 
     // ── Player input ────────────────────────────────────────────────────────
-    let dx = 0;
-    let dz = 0;
+    let dx = 0, dz = 0;
     if (this.keys.up)    dz -= 1;
     if (this.keys.down)  dz += 1;
     if (this.keys.left)  dx -= 1;
     if (this.keys.right) dx += 1;
 
-    // Normalise diagonal.
     const inputMag = Math.sqrt(dx * dx + dz * dz);
     if (inputMag > 0) { dx /= inputMag; dz /= inputMag; }
 
     this.player.applyInput(dx, dz, dt);
 
-    // Dash: fire on rising edge of dash key. Dash in the held direction; only
-    // default to "forward" (-Z) when no direction is held at all.
     const dashNow = this.keys.dash;
     if (dashNow && !this.prevDash) {
       const noInput = dx === 0 && dz === 0;
@@ -139,6 +137,23 @@ export class BattleMode {
     this.enemy.update(dt, this.player.group.position, arenaRadius);
     this.particles.update(this.arenaScene.scene, dt);
 
+    // Update shockwave rings
+    for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+      if (this.shockwaves[i].update(dt)) {
+        this.shockwaves[i].dispose(this.arenaScene.scene);
+        this.shockwaves.splice(i, 1);
+      }
+    }
+
+    // Boundary flash decay
+    if (this.boundaryFlash > 0) {
+      this.boundaryFlash -= dt * 3;
+      if (this.boundaryFlash < 0) this.boundaryFlash = 0;
+      const bi = 2.0 + this.boundaryFlash * 6;
+      this.arenaScene.boundaryMat.emissiveIntensity = bi;
+      this.arenaScene.boundaryLight.intensity = 1.2 + this.boundaryFlash * 4;
+    }
+
     if (this.hitCooldown > 0) this.hitCooldown -= dt;
 
     // ── Collision detection ─────────────────────────────────────────────────
@@ -151,48 +166,61 @@ export class BattleMode {
       const nx = pdx / dist;
       const nz = pdz / dist;
 
-      // Separate the spinners.
       const overlap = minDist - dist;
       this.player.group.position.x += nx * overlap * 0.55;
       this.player.group.position.z += nz * overlap * 0.55;
       this.enemy.group.position.x  -= nx * overlap * 0.55;
       this.enemy.group.position.z  -= nz * overlap * 0.55;
 
-      // Relative impact speed along the collision normal.
       const relVx = this.player.velocity.x - this.enemy.velocity.x;
       const relVz = this.player.velocity.y - this.enemy.velocity.y;
       const impactSpeed = Math.abs(relVx * nx + relVz * nz);
 
       if (impactSpeed > 0.8 && this.hitCooldown <= 0) {
-        this.hitCooldown = 0.45; // each ram scores once, then a short cooldown
+        this.hitCooldown = 0.45;
         const impulse = impactSpeed * 0.9;
 
-        // Bounce player back, then clamp so a hit can't fling them across the
-        // arena in a single frame.
         this.player.velocity.x -= nx * impulse * 1.4;
         this.player.velocity.y -= nz * impulse * 1.4;
         const pvLen = Math.hypot(this.player.velocity.x, this.player.velocity.y);
         const PV_MAX = 22;
         if (pvLen > PV_MAX) this.player.velocity.multiplyScalar(PV_MAX / pvLen);
 
-        // Send enemy flying (they take more impact).
         this.enemy.recoilFrom(nx * impulse * 2.2, nz * impulse * 2.2);
 
-        // Player takes less damage (hero advantage — Aaron should win!).
         const dmg = Math.min(Math.max(impactSpeed * 3.5, 5), 25);
         this.player.takeDamage(dmg * 0.35);
         this.enemy.takeDamage(dmg);
 
-        // Spark particles at the midpoint.
         const mid = new THREE.Vector3(
           (this.player.group.position.x + this.enemy.group.position.x) / 2,
           0.8,
           (this.player.group.position.z + this.enemy.group.position.z) / 2,
         );
-        this.particles.emit(this.arenaScene.scene, mid, 22, 0xffdd44);
-        this.particles.emit(this.arenaScene.scene, mid, 8, 0xff4444);
 
-        this.shakeAmount = 0.35;
+        // Big explosive burst: 3 colours, faster particles
+        this.particles.emit(this.arenaScene.scene, mid, 28, 0xffee44, 1.3);
+        this.particles.emit(this.arenaScene.scene, mid, 14, 0xff4444, 1.0);
+        this.particles.emit(this.arenaScene.scene, mid, 10, 0xffffff, 1.6);
+
+        // Two expanding shockwave rings
+        this.shockwaves.push(new ShockwaveRing(this.arenaScene.scene, mid, 0xffee44));
+        this.shockwaves.push(new ShockwaveRing(this.arenaScene.scene, mid, 0xff4444));
+        // Stagger the inner ring slightly
+        setTimeout(() => {
+          if (this.battleState === "fighting") {
+            const sw = new ShockwaveRing(this.arenaScene.scene, mid, 0xffffff);
+            this.shockwaves.push(sw);
+          }
+        }, 80);
+
+        // Boundary flash
+        this.boundaryFlash = 1.0;
+
+        // Screen flash via CSS
+        this.onScreenFlash?.(impactSpeed > 5 ? "#ffee44" : "#ff4444");
+
+        this.shakeAmount = 0.4;
         this.onEnergyChange?.(this.player.energy, this.enemy.energy);
       }
     }
@@ -214,10 +242,8 @@ export class BattleMode {
     // ── Win / lose ───────────────────────────────────────────────────────────
     if (this.player.energy <= 0 || this.enemy.energy <= 0) {
       this.battleState = "gameover";
-      // Settle the camera so the result card isn't shown mid-shake.
       this.shakeAmount = 0;
       this.arenaScene.camera.position.copy(this.baseCamera);
-      // Ties go to the hero — Spark wins.
       this.onGameOver?.(this.enemy.energy <= 0 ? "player" : "enemy");
     }
   }

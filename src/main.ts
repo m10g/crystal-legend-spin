@@ -66,6 +66,7 @@ let currentMode: "home" | "battle" = "home";
 
 const homeOverlay   = document.getElementById("ui-overlay")!;
 const battleOverlay = document.getElementById("battle-ui")!;
+const screenFlash   = document.getElementById("screen-flash")!;
 const countdownEl   = document.getElementById("battle-countdown")!;
 const playerFill    = document.getElementById("player-energy-fill")!;
 const enemyFill     = document.getElementById("enemy-energy-fill")!;
@@ -85,6 +86,12 @@ function enterBattle(): void {
     battleMode.onEnergyChange = (pe, ee) => {
       playerFill.style.width = `${pe}%`;
       enemyFill.style.width  = `${ee}%`;
+    };
+
+    battleMode.onScreenFlash = (color: string) => {
+      screenFlash.style.background = color;
+      screenFlash.classList.add("flash-active");
+      requestAnimationFrame(() => screenFlash.classList.remove("flash-active"));
     };
 
     battleMode.onGameOver = (winner) => {
