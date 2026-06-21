@@ -13,6 +13,7 @@ export class BattleMode {
 
   private particles: SparkParticles;
   private shockwaves: ShockwaveRing[] = [];
+  private pendingShockwave: { pos: THREE.Vector3; delay: number } | null = null;
   private battleState: BattleState = "countdown";
   private countdownTimer = 3;
   private fightFlashTimer = 0;
@@ -83,6 +84,7 @@ export class BattleMode {
     this.boundaryFlash = 0;
     for (const sw of this.shockwaves) sw.dispose(this.arenaScene.scene);
     this.shockwaves.length = 0;
+    this.pendingShockwave = null;
     this.particles.clear(this.arenaScene.scene);
     this.clearKeys();
     this.prevDash = false;
@@ -145,6 +147,15 @@ export class BattleMode {
       }
     }
 
+    // Staggered third shockwave (game-loop timer, not setTimeout)
+    if (this.pendingShockwave) {
+      this.pendingShockwave.delay -= dt;
+      if (this.pendingShockwave.delay <= 0) {
+        this.shockwaves.push(new ShockwaveRing(this.arenaScene.scene, this.pendingShockwave.pos, 0xffffff));
+        this.pendingShockwave = null;
+      }
+    }
+
     // Boundary flash decay
     if (this.boundaryFlash > 0) {
       this.boundaryFlash -= dt * 3;
@@ -203,16 +214,10 @@ export class BattleMode {
         this.particles.emit(this.arenaScene.scene, mid, 14, 0xff4444, 1.0);
         this.particles.emit(this.arenaScene.scene, mid, 10, 0xffffff, 1.6);
 
-        // Two expanding shockwave rings
+        // Two expanding shockwave rings, plus a third staggered via game-loop timer.
         this.shockwaves.push(new ShockwaveRing(this.arenaScene.scene, mid, 0xffee44));
         this.shockwaves.push(new ShockwaveRing(this.arenaScene.scene, mid, 0xff4444));
-        // Stagger the inner ring slightly
-        setTimeout(() => {
-          if (this.battleState === "fighting") {
-            const sw = new ShockwaveRing(this.arenaScene.scene, mid, 0xffffff);
-            this.shockwaves.push(sw);
-          }
-        }, 80);
+        this.pendingShockwave = { pos: mid.clone(), delay: 0.08 };
 
         // Boundary flash
         this.boundaryFlash = 1.0;

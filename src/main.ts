@@ -89,9 +89,11 @@ function enterBattle(): void {
     };
 
     battleMode.onScreenFlash = (color: string) => {
+      // Remove and re-add the class so the animation restarts even mid-flight.
+      screenFlash.classList.remove("flash-active");
       screenFlash.style.background = color;
+      void screenFlash.offsetWidth; // force reflow to reset animation state
       screenFlash.classList.add("flash-active");
-      requestAnimationFrame(() => screenFlash.classList.remove("flash-active"));
     };
 
     battleMode.onGameOver = (winner) => {

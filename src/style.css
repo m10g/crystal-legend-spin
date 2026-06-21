@@ -481,16 +481,21 @@ body {
 }
 
 /* ── Impact screen flash ── */
+/* Uses animation (not transition) so re-triggering works correctly — adding
+   the class while the animation is mid-flight restarts it cleanly. */
 #screen-flash {
   position: fixed;
   inset: 0;
   pointer-events: none;
   opacity: 0;
   z-index: 100;
-  transition: opacity 0.06s ease-out;
 }
 
 #screen-flash.flash-active {
-  opacity: 0.35;
-  transition: none;
+  animation: screen-flash-out 0.35s ease-out forwards;
+}
+
+@keyframes screen-flash-out {
+  0%   { opacity: 0.32; }
+  100% { opacity: 0; }
 }

@@ -121,9 +121,10 @@ export class PlayerSpinner {
   private shards: THREE.Mesh[] = [];
   private glowLight: THREE.PointLight;
 
-  // Motion trail: ring afterimages
+  // Motion trail: ring afterimages — each ring gets its own material so opacity
+  // can differ per ring without the shared-material-overwrite bug.
   private trail: THREE.Mesh[] = [];
-  private trailMat: THREE.MeshStandardMaterial;
+  private trailMats: THREE.MeshStandardMaterial[] = [];
 
   // Damage flash state
   private hitFlash = 0;
@@ -177,16 +178,17 @@ export class PlayerSpinner {
     this.glowLight = new THREE.PointLight(0x5fd0ff, 2.5, 7);
     this.group.add(this.glowLight);
 
-    // Motion trail (7 ring "ghosts", reused by repositioning)
-    this.trailMat = new THREE.MeshStandardMaterial({
-      color: 0x40cfff, emissive: 0x40cfff, emissiveIntensity: 2,
-      transparent: true, opacity: 0, side: THREE.DoubleSide,
-    });
+    // Motion trail — 7 rings, each with its own material so per-ring opacity works.
     for (let i = 0; i < 7; i++) {
-      const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.68, 24), this.trailMat);
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0x40cfff, emissive: 0x40cfff, emissiveIntensity: 2.5,
+        transparent: true, opacity: 0, side: THREE.DoubleSide,
+      });
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.48, 0.7, 24), mat);
       ring.rotation.x = -Math.PI / 2;
       ring.visible = false;
       this.trail.push(ring);
+      this.trailMats.push(mat);
     }
 
     this.group.position.set(-3, 0.7, 0);
@@ -273,21 +275,23 @@ export class PlayerSpinner {
     const bobY = 0.7 + Math.sin(Date.now() * 0.003) * 0.14;
     this.group.position.y = bobY;
 
-    // Motion trail: show rings trailing behind when dashing or fast
+    // Motion trail: rings trailing behind when dashing or fast.
+    // Each ring has its own material so opacity decreases properly from front to back.
     const speed = this.velocity.length();
     const showTrail = this.isDashing || speed > 6;
-    for (let i = 0; i < this.trail.length; i++) {
+    const N = this.trail.length;
+    for (let i = 0; i < N; i++) {
       const ring = this.trail[i];
       ring.visible = showTrail;
       if (showTrail) {
-        const lag = (i + 1) * 0.055;
+        const lag = (i + 1) * 0.065;
         ring.position.set(
           this.group.position.x - this.velocity.x * lag,
           bobY + 0.01,
           this.group.position.z - this.velocity.y * lag,
         );
-        const alpha = (1 - i / this.trail.length) * (this.isDashing ? 0.55 : 0.3);
-        this.trailMat.opacity = alpha;
+        // Closest ring (i=0) is most opaque; furthest ring (i=N-1) fades to ~0.
+        this.trailMats[i].opacity = (1 - i / N) * (this.isDashing ? 0.6 : 0.38);
       }
     }
   }
